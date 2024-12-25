@@ -1,6 +1,6 @@
 from flask import Flask, request, send_file, jsonify
+from pytube import YouTube
 import os
-import requests
 
 app = Flask(__name__)
 
@@ -12,19 +12,17 @@ def download_video():
         return jsonify({'error': 'URL is required'}), 400
 
     try:
-        # YouTube video URL'sinden video dosyasını indirme işlemi
-        response = requests.get(video_url, stream=True)
-        if response.status_code == 200:
-            file_path = 'video.mp4'
-            with open(file_path, 'wb') as f:
-                for chunk in response.iter_content(chunk_size=1024):
-                    if chunk:
-                        f.write(chunk)
-            return send_file(file_path, as_attachment=True, download_name='video.mp4')
-        else:
-            return jsonify({'error': 'Failed to download video. Please check the URL.'}), 400
+        # YouTube video bağlantısını doğrula ve indir
+        yt = YouTube(video_url)
+        stream = yt.streams.filter(progressive=True, file_extension='mp4').first()
+        file_path = stream.download(filename='video.mp4')
+
+        return send_file(file_path, as_attachment=True, download_name='video.mp4')
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+    finally:
+        if os.path.exists('video.mp4'):
+            os.remove('video.mp4')
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
